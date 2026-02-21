@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+
 export const registerSchema = z.object({
   email: z.string().email('Please provide a valid email address'),
   password: z
@@ -40,12 +41,22 @@ export const validate = (schema) => {
       schema.parse(req.body);
       next();
     } catch (error) {
+      // ✅ FIX: Use "instanceof z.ZodError" to properly detect Zod errors
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          // ✅ FIX: Map over "error.issues" to get the clean messages
+          details: error.issues.map((e) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
+      
+      // For completely different, non-Zod errors
       return res.status(400).json({
         error: 'Validation failed',
-        details: error.errors.map((e) => ({
-          field: e.path.join('.'),
-          message: e.message
-        }))
+        details: [{ message: 'Invalid request data' }]
       });
     }
   };
